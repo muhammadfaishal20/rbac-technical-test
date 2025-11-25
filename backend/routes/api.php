@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Authentication Routes
+Route::prefix('auth')->group(base_path('routes/auth.php'));
+
+// RBAC Routes - Only admin and management-user can access (manage-roles permission)
+Route::middleware(['auth:sanctum', 'permission:manage-roles'])->prefix('rbac')->group(base_path('routes/rbac.php'));
+
+// File Upload Routes - Only admin and management-file can access (manage-files permission)
+Route::middleware(['auth:sanctum', 'permission:manage-files'])->prefix('files')->group(base_path('routes/file.php'));
