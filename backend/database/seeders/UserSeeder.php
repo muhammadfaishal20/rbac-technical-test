@@ -14,10 +14,10 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Pastikan roles sudah ada
-        $adminRole = Role::where('name', 'admin')->first();
-        $managementUserRole = Role::where('name', 'management-user')->first();
-        $managementFileRole = Role::where('name', 'management-file')->first();
+        // Pastikan roles sudah ada (dengan guard web)
+        $adminRole = Role::where('name', 'admin')->where('guard_name', 'web')->first();
+        $managementUserRole = Role::where('name', 'management-user')->where('guard_name', 'web')->first();
+        $managementFileRole = Role::where('name', 'management-file')->where('guard_name', 'web')->first();
 
         if (!$adminRole || !$managementUserRole || !$managementFileRole) {
             $this->command->error('Roles not found. Please run RolePermissionSeeder first.');

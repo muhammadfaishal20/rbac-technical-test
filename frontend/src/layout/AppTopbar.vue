@@ -1,8 +1,40 @@
 <script setup>
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import Menu from 'primevue/menu';
 import { useLayout } from '@/layout/composables/layout';
+import { useAuthStore } from '@/store/authStore.js';
 import AppConfigurator from './AppConfigurator.vue';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const authStore = useAuthStore();
+const router = useRouter();
+const menu = ref();
+
+const user = computed(() => authStore.user);
+const userInitials = computed(() => {
+    if (!user.value || !user.value.name) return 'U';
+    const names = user.value.name.split(' ');
+    if (names.length >= 2) {
+        return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return user.value.name[0].toUpperCase();
+});
+
+const menuItems = ref([
+    {
+        label: 'Logout',
+        icon: 'pi pi-sign-out',
+        command: async () => {
+            await authStore.logout();
+            router.push('/auth/login');
+        }
+    }
+]);
+
+const toggle = (event) => {
+    menu.value.toggle(event);
+};
 </script>
 
 <template>
@@ -51,27 +83,27 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 </div>
             </div>
 
-            <button
-                class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-            >
-                <i class="pi pi-ellipsis-v"></i>
-            </button>
-
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
+                    <button 
+                        type="button" 
+                        class="layout-topbar-action layout-topbar-user-button"
+                        @click="toggle"
+                        aria-haspopup="true"
+                        aria-controls="user-menu"
+                    >
+                        <div class="layout-topbar-user-avatar">
+                            {{ userInitials }}
+                        </div>
+                        <span class="layout-topbar-user-name">{{ user?.name || 'User' }}</span>
+                        <i class="pi pi-chevron-down layout-topbar-user-chevron"></i>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
+                    <Menu 
+                        ref="menu" 
+                        id="user-menu" 
+                        :model="menuItems" 
+                        popup 
+                    />
                 </div>
             </div>
         </div>

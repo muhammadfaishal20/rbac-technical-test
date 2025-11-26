@@ -16,7 +16,7 @@ class RoleController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Role::with('permissions');
+        $query = Role::where('guard_name', 'web')->with('permissions');
 
         // Search functionality
         if ($request->has('search')) {
@@ -41,10 +41,13 @@ class RoleController extends Controller
     {
         $role = Role::create([
             'name' => $request->name,
+            'guard_name' => 'web', // Explicitly set guard to web
         ]);
 
         if ($request->has('permissions')) {
-            $permissions = Permission::whereIn('id', $request->permissions)->get();
+            $permissions = Permission::where('guard_name', 'web')
+                ->whereIn('id', $request->permissions)
+                ->get();
             $role->syncPermissions($permissions);
         }
 
@@ -77,10 +80,13 @@ class RoleController extends Controller
     {
         $role->update([
             'name' => $request->name,
+            'guard_name' => 'web', // Explicitly set guard to web
         ]);
 
         if ($request->has('permissions')) {
-            $permissions = Permission::whereIn('id', $request->permissions)->get();
+            $permissions = Permission::where('guard_name', 'web')
+                ->whereIn('id', $request->permissions)
+                ->get();
             $role->syncPermissions($permissions);
         }
 
@@ -119,7 +125,7 @@ class RoleController extends Controller
      */
     public function getPermissions(): JsonResponse
     {
-        $permissions = Permission::all();
+        $permissions = Permission::where('guard_name', 'web')->get();
 
         return response()->json([
             'success' => true,

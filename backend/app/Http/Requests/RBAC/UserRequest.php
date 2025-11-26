@@ -36,8 +36,7 @@ class UserRequest extends FormRequest
             'password' => [
                 $userId ? 'nullable' : 'required',
                 'string',
-                'min:8',
-                'confirmed',
+                'min:6',
             ],
             'roles' => ['nullable', 'array'],
             'roles.*' => ['exists:roles,id'],
@@ -57,7 +56,7 @@ class UserRequest extends FormRequest
             'email.email' => 'Email must be a valid email address.',
             'email.unique' => 'Email already exists.',
             'password.required' => 'Password is required.',
-            'password.min' => 'Password must be at least 8 characters.',
+            'password.min' => 'Password must be at least 6 characters.',
             'password.confirmed' => 'Password confirmation does not match.',
             'roles.array' => 'Roles must be an array.',
             'roles.*.exists' => 'One or more selected roles do not exist.',

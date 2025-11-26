@@ -55,7 +55,9 @@ class UserController extends Controller
         ]);
 
         if ($request->has('roles')) {
-            $roles = Role::whereIn('id', $request->roles)->get();
+            $roles = Role::where('guard_name', 'web')
+                ->whereIn('id', $request->roles)
+                ->get();
             $user->syncRoles($roles);
         }
 
@@ -98,7 +100,9 @@ class UserController extends Controller
         $user->update($data);
 
         if ($request->has('roles')) {
-            $roles = Role::whereIn('id', $request->roles)->get();
+            $roles = Role::where('guard_name', 'web')
+                ->whereIn('id', $request->roles)
+                ->get();
             $user->syncRoles($roles);
         }
 
@@ -137,7 +141,7 @@ class UserController extends Controller
      */
     public function getRoles(): JsonResponse
     {
-        $roles = Role::all();
+        $roles = Role::where('guard_name', 'web')->get();
 
         return response()->json([
             'success' => true,
