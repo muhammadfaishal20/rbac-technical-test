@@ -16,23 +16,57 @@ class FileController extends Controller
      */
     public function getUploadConfig(): JsonResponse
     {
+        // Detect web server
+        $webServer = 'Unknown';
+        if (isset($_SERVER['SERVER_SOFTWARE'])) {
+            $serverSoftware = $_SERVER['SERVER_SOFTWARE'];
+            if (strpos($serverSoftware, 'nginx') !== false) {
+                $webServer = 'Nginx';
+            } elseif (strpos($serverSoftware, 'Apache') !== false) {
+                $webServer = 'Apache';
+            } else {
+                $webServer = $serverSoftware;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
-                'upload_max_filesize' => ini_get('upload_max_filesize'),
-                'post_max_size' => ini_get('post_max_size'),
-                'max_file_uploads' => ini_get('max_file_uploads'),
-                'memory_limit' => ini_get('memory_limit'),
-                'max_execution_time' => ini_get('max_execution_time'),
-                'max_input_time' => ini_get('max_input_time'),
-                'file_uploads' => ini_get('file_uploads') ? 'enabled' : 'disabled',
-                'upload_tmp_dir' => ini_get('upload_tmp_dir') ?: sys_get_temp_dir(),
-                'php_version' => PHP_VERSION,
+                'php' => [
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'post_max_size' => ini_get('post_max_size'),
+                    'max_file_uploads' => ini_get('max_file_uploads'),
+                    'memory_limit' => ini_get('memory_limit'),
+                    'max_execution_time' => ini_get('max_execution_time'),
+                    'max_input_time' => ini_get('max_input_time'),
+                    'file_uploads' => ini_get('file_uploads') ? 'enabled' : 'disabled',
+                    'upload_tmp_dir' => ini_get('upload_tmp_dir') ?: sys_get_temp_dir(),
+                    'php_version' => PHP_VERSION,
+                ],
+                'web_server' => $webServer,
                 'recommended' => [
-                    'upload_max_filesize' => '100M',
-                    'post_max_size' => '100M',
-                    'max_file_uploads' => '20',
-                    'memory_limit' => '256M',
+                    'php' => [
+                        'upload_max_filesize' => '100M',
+                        'post_max_size' => '200M', // Lebih besar untuk multiple files
+                        'max_file_uploads' => '20',
+                        'memory_limit' => '256M',
+                        'max_execution_time' => '300',
+                        'max_input_time' => '300',
+                    ],
+                    'nginx' => [
+                        'client_max_body_size' => '200M',
+                        'client_body_timeout' => '300s',
+                        'client_body_buffer_size' => '128k',
+                    ],
+                    'apache' => [
+                        'LimitRequestBody' => '209715200', // 200MB in bytes
+                        'Timeout' => '300',
+                    ],
+                ],
+                'notes' => [
+                    'error_413' => 'Error 413 Content Too Large biasanya dari web server (Nginx/Apache), bukan PHP.',
+                    'post_max_size' => 'post_max_size harus >= upload_max_filesize untuk single file, atau >= (jumlah files × upload_max_filesize) untuk multiple files.',
+                    'web_server_config' => "Pastikan konfigurasi web server ({$webServer}) juga sudah diset dengan benar. Lihat dokumentasi UPLOAD_LARGE_FILES.md untuk detail.",
                 ],
             ],
         ]);
