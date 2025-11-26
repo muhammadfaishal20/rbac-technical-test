@@ -3,6 +3,7 @@
 namespace App\Http\Requests\RBAC;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class RoleRequest extends FormRequest
 {
@@ -21,10 +22,25 @@ class RoleRequest extends FormRequest
      */
     public function rules(): array
     {
-        $roleId = $this->route('role');
+        $role = $this->route('role');
+        
+        // Get role ID - handle both model binding and direct ID
+        $roleId = null;
+        if ($role) {
+            if ($role instanceof \Spatie\Permission\Models\Role) {
+                $roleId = $role->id;
+            } elseif (is_numeric($role)) {
+                $roleId = $role;
+            }
+        }
 
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:roles,name,' . $roleId],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('roles', 'name')->ignore($roleId),
+            ],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['exists:permissions,id'],
         ];
