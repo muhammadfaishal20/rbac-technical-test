@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    // Get PHP upload configuration (for debugging)
+    Route::get('/config/upload', [FileController::class, 'getUploadConfig'])->name('config.upload');
+    
     // All authenticated users can upload files (manage-files permission)
     Route::post('/upload', [FileController::class, 'store'])->name('upload');
     

@@ -16,9 +16,24 @@ const fileService = {
         const formData = new FormData();
         
         // Add files to FormData with files[] array format
-        Array.from(files).forEach(file => {
-            formData.append('files[]', file);
+        // Ensure we're working with valid File objects
+        Array.from(files).forEach((file, index) => {
+            if (file instanceof File) {
+                // Verify file is still valid before appending
+                if (file.size > 0 && file.name) {
+                    formData.append('files[]', file, file.name);
+                } else {
+                    console.warn(`File at index ${index} is invalid (size: ${file.size}, name: ${file.name}):`, file);
+                }
+            } else {
+                console.warn(`File at index ${index} is not a valid File object:`, file);
+            }
         });
+        
+        // Verify FormData has files
+        if (formData.getAll('files[]').length === 0) {
+            throw new Error('No valid files to upload');
+        }
         
         // Don't set Content-Type header - let browser set it with boundary for FormData
         const response = await http.post('/files/upload', formData);

@@ -41,7 +41,7 @@
             :rowsPerPageOptions="[10, 20, 50]"
             emptyMessage="No files found"
         >
-            <Column header="Preview" style="min-width: 8rem">
+            <Column header="Preview" style="min-width: 10rem">
                 <template #body="slotProps">
                     <div class="flex align-items-center">
                         <img
@@ -49,10 +49,14 @@
                             :src="slotProps.data.url"
                             :alt="slotProps.data.name"
                             class="file-preview-image"
+                            @error="handleImageError"
                         />
-                        <i
+                        <video
                             v-else-if="slotProps.data.mime.startsWith('video/')"
-                            class="pi pi-video text-4xl text-primary"
+                            :src="slotProps.data.url"
+                            class="file-preview-video"
+                            controls
+                            preload="metadata"
                         />
                         <i
                             v-else
@@ -92,6 +96,25 @@
             <Column field="created_at" header="Uploaded At" sortable style="min-width: 12rem">
                 <template #body="slotProps">
                     {{ formatDate(slotProps.data.created_at) }}
+                </template>
+            </Column>
+
+            <Column header="Path/URL" style="min-width: 15rem">
+                <template #body="slotProps">
+                    <div class="flex flex-column gap-1">
+                        <a
+                            :href="slotProps.data.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-primary text-sm no-underline hover:underline"
+                        >
+                            <i class="pi pi-external-link mr-1"></i>
+                            Open File
+                        </a>
+                        <span class="text-xs text-secondary font-mono break-all">
+                            {{ slotProps.data.path }}
+                        </span>
+                    </div>
                 </template>
             </Column>
 
@@ -162,8 +185,9 @@ let searchTimeout = null;
 
 const mimeOptions = [
     { label: 'All Types', value: null },
-    { label: 'Images', value: 'image' },
-    { label: 'Videos', value: 'video' },
+    { label: 'JPEG Images', value: 'image/jpeg' },
+    { label: 'PNG Images', value: 'image/png' },
+    { label: 'MP4 Videos', value: 'video/mp4' },
 ];
 
 const fetchFiles = async (page = 1) => {
@@ -290,6 +314,14 @@ const getMimeSeverity = (mime) => {
     return 'secondary';
 };
 
+const handleImageError = (event) => {
+    // If image fails to load, replace with icon
+    event.target.style.display = 'none';
+    const icon = document.createElement('i');
+    icon.className = 'pi pi-image text-4xl text-secondary';
+    event.target.parentElement.appendChild(icon);
+};
+
 onMounted(() => {
     fetchFiles();
 });
@@ -297,10 +329,27 @@ onMounted(() => {
 
 <style scoped>
 .file-preview-image {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     object-fit: cover;
     border-radius: 4px;
+    cursor: pointer;
+}
+
+.file-preview-video {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.font-mono {
+    font-family: 'Courier New', monospace;
+}
+
+.break-all {
+    word-break: break-all;
 }
 </style>
 

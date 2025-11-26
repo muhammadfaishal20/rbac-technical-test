@@ -12,6 +12,33 @@ use Illuminate\Support\Facades\Storage;
 class FileController extends Controller
 {
     /**
+     * Get PHP upload configuration (for debugging)
+     */
+    public function getUploadConfig(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size' => ini_get('post_max_size'),
+                'max_file_uploads' => ini_get('max_file_uploads'),
+                'memory_limit' => ini_get('memory_limit'),
+                'max_execution_time' => ini_get('max_execution_time'),
+                'max_input_time' => ini_get('max_input_time'),
+                'file_uploads' => ini_get('file_uploads') ? 'enabled' : 'disabled',
+                'upload_tmp_dir' => ini_get('upload_tmp_dir') ?: sys_get_temp_dir(),
+                'php_version' => PHP_VERSION,
+                'recommended' => [
+                    'upload_max_filesize' => '100M',
+                    'post_max_size' => '100M',
+                    'max_file_uploads' => '20',
+                    'memory_limit' => '256M',
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Display a listing of the files.
      */
     public function index(Request $request): JsonResponse
@@ -39,10 +66,12 @@ class FileController extends Controller
         $perPage = $request->get('per_page', 15);
         $files = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
-        // Add URL to each file
+        // Add URL and formatted size to each file
         $files->getCollection()->transform(function ($file) {
             $file->url = $file->url;
             $file->formatted_size = $file->formatted_size;
+            // Ensure path is included in response
+            $file->path = $file->path;
             return $file;
         });
 
@@ -60,8 +89,63 @@ class FileController extends Controller
         $uploadedFiles = [];
         $errors = [];
 
-        foreach ($request->file('files') as $file) {
+        $files = $request->file('files');
+        
+        if (!$files || !is_array($files)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No files received.',
+                'errors' => ['files' => ['No files were uploaded.']],
+            ], 422);
+        }
+        
+        // Log for debugging
+        \Log::info('File upload request received', [
+            'file_count' => count($files),
+            'files' => array_map(function($file) {
+                return [
+                    'name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime' => $file->getMimeType(),
+                    'extension' => $file->getClientOriginalExtension(),
+                    'is_valid' => $file->isValid(),
+                    'error' => $file->isValid() ? null : $file->getError(),
+                ];
+            }, $files),
+        ]);
+
+        foreach ($files as $index => $file) {
             try {
+                // Check if file is valid
+                if (!$file->isValid()) {
+                    $errorMessage = $file->getErrorMessage();
+                    // Check for common upload errors
+                    $uploadMaxFilesize = ini_get('upload_max_filesize');
+                    $postMaxSize = ini_get('post_max_size');
+                    
+                    if ($file->getError() === UPLOAD_ERR_INI_SIZE) {
+                        $errorMessage = "File size exceeds PHP upload_max_filesize limit ({$uploadMaxFilesize}). Please increase 'upload_max_filesize' in php.ini to at least 100M.";
+                    } elseif ($file->getError() === UPLOAD_ERR_FORM_SIZE) {
+                        $errorMessage = "File size exceeds PHP post_max_size limit ({$postMaxSize}). Please increase 'post_max_size' in php.ini to at least 100M.";
+                    } elseif ($file->getError() === UPLOAD_ERR_PARTIAL) {
+                        $errorMessage = 'File was only partially uploaded.';
+                    } elseif ($file->getError() === UPLOAD_ERR_NO_FILE) {
+                        $errorMessage = 'No file was uploaded.';
+                    } elseif ($file->getError() === UPLOAD_ERR_NO_TMP_DIR) {
+                        $errorMessage = 'Missing temporary folder for file upload.';
+                    } elseif ($file->getError() === UPLOAD_ERR_CANT_WRITE) {
+                        $errorMessage = 'Failed to write file to disk.';
+                    } elseif ($file->getError() === UPLOAD_ERR_EXTENSION) {
+                        $errorMessage = 'File upload stopped by extension.';
+                    }
+                    
+                    $errors[] = [
+                        'file' => $file->getClientOriginalName() ?? "File {$index}",
+                        'error' => $errorMessage,
+                    ];
+                    continue;
+                }
+
                 // Generate unique filename
                 $originalName = $file->getClientOriginalName();
                 $extension = $file->getClientOriginalExtension();
@@ -86,17 +170,23 @@ class FileController extends Controller
                 $uploadedFiles[] = $fileModel;
             } catch (\Exception $e) {
                 $errors[] = [
-                    'file' => $file->getClientOriginalName(),
+                    'file' => $file->getClientOriginalName() ?? "File {$index}",
                     'error' => $e->getMessage(),
                 ];
             }
         }
 
         if (count($errors) > 0 && count($uploadedFiles) === 0) {
+            // Format errors for Laravel validation format
+            $formattedErrors = [];
+            foreach ($errors as $index => $error) {
+                $formattedErrors["files.{$index}"] = [$error['error']];
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload files.',
-                'errors' => $errors,
+                'errors' => $formattedErrors,
             ], 422);
         }
 
